@@ -1,0 +1,32 @@
+{
+  "name": "directory-submission-bot",
+  "version": "1.0.0",
+  "description": "Automated directory submission tool using Puppeteer",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "mocha test/**/*.test.js",
+    "lint": "eslint src test",
+    "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\""
+  },
+  "keywords": [
+    "puppeteer",
+    "automation",
+    "directory-submission"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^22.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "mocha": "^10.3.0",
+    "chai": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
