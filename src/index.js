@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { parseDirectoriesCSV, getUnsubmittedDirectories } from './utils/csv-parser.js';
-import { SubmissionBot } from './submission-bot.js';
+import { SmartSubmissionBot } from './smart-submission-bot.js';
 import { mkdir } from 'fs/promises';
 
 /**
@@ -57,17 +57,20 @@ async function main() {
     return;
   }
 
-  // Initialize the bot
-  const bot = new SubmissionBot(config.bot);
+  // Initialize the smart bot
+  const bot = new SmartSubmissionBot(config.bot);
 
   try {
     await bot.initialize();
 
-    // Process directories
+    // Load site-specific configurations
+    await bot.loadSiteConfigs('./site-configs.json');
+
+    // Process directories with smart submission
     console.log(`\n🚀 Processing ${directoriesToProcess.length} directories...\n`);
     console.log('=' .repeat(60));
 
-    const results = await bot.processDirectories(
+    const results = await bot.processDirectoriesWithConfigs(
       directoriesToProcess,
       config.submission
     );

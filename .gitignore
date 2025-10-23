@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Configuration
+config.js
+
+# Test files
+test-directories.csv
+test-invalid.csv
+
+# Output
+submission-results.json
+site-inspection-results.json
+site-configs.json
+screenshots/
+*.log
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/

@@ -81,7 +81,29 @@ Third Directory,https://example3.com/submit,
 
 ## Usage
 
-### Run the Bot
+### Step 1: Inspect Sites (Generate Configurations)
+
+First, inspect the production sites to analyze their submission forms and generate site-specific configurations:
+
+```bash
+pnpm inspect
+```
+
+Or with a limit (recommended for first run):
+```bash
+pnpm inspect ./directories.csv 5
+```
+
+This will:
+- Visit each unsubmitted directory
+- Analyze forms, fields, and submission buttons
+- Generate intelligent field mappings
+- Create `site-configs.json` with site-specific configurations
+- Create `site-inspection-results.json` with detailed analysis
+
+### Step 2: Run Smart Submissions
+
+After generating configurations, run the smart submission bot:
 
 ```bash
 pnpm start
@@ -91,6 +113,12 @@ Or:
 ```bash
 node src/index.js
 ```
+
+The bot will use the generated configurations to:
+- Fill forms with correct field mappings
+- Handle different submission methods (forms vs links)
+- Detect and pause for CAPTCHAs
+- Skip sites requiring manual submission
 
 ### Run Tests
 
