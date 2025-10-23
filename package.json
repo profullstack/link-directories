@@ -1,15 +1,19 @@
 {
-  "name": "directory-submission-bot",
+  "name": "directories",
   "version": "1.0.0",
-  "description": "Automated directory submission tool using Puppeteer",
+  "description": "Automated directory submission CLI using Puppeteer",
   "type": "module",
-  "main": "src/index.js",
+  "main": "src/cli.js",
+  "bin": {
+    "directories": "./src/cli.js"
+  },
   "scripts": {
-    "start": "node src/index.js",
-    "inspect": "node src/inspect-sites.js",
+    "start": "node src/cli.js",
     "test": "mocha test/**/*.test.js",
     "lint": "eslint src test",
-    "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\""
+    "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\"",
+    "link": "npm link",
+    "unlink": "npm unlink -g directories"
   },
   "keywords": [
     "puppeteer",
@@ -19,13 +23,18 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "chalk": "^5.3.0",
+    "dotenv": "^16.3.1",
+    "inquirer": "^9.3.8",
+    "openai": "^4.104.0",
+    "ora": "^8.0.0",
     "puppeteer": "^22.0.0"
   },
   "devDependencies": {
+    "chai": "^5.1.0",
     "eslint": "^8.57.0",
-    "prettier": "^3.2.5",
     "mocha": "^10.3.0",
-    "chai": "^5.1.0"
+    "prettier": "^3.2.5"
   },
   "engines": {
     "node": ">=20.0.0"

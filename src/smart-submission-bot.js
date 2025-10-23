@@ -18,10 +18,12 @@ export class SmartSubmissionBot extends SubmissionBot {
       const content = await readFile(configPath, 'utf-8');
       this.siteConfigs = JSON.parse(content);
       console.log(`✅ Loaded configurations for ${Object.keys(this.siteConfigs).length} sites`);
+      return true;
     } catch (error) {
       console.warn(`⚠️  Could not load site configs: ${error.message}`);
-      console.warn('   Run "pnpm inspect" first to generate site configurations');
+      console.warn('   You need to run "Analyze" or "Inspect" first to generate configurations');
       this.siteConfigs = {};
+      return false;
     }
   }
 
