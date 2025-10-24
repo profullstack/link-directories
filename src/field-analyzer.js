@@ -224,7 +224,7 @@ export class FieldAnalyzer {
    */
 
   /**
-   * Click button from HTML snippet using XPath
+   * Click button from HTML snippet
    */
   async clickButtonFromHtml(htmlString) {
     // If it's already a simple selector, use it directly
@@ -235,19 +235,21 @@ export class FieldAnalyzer {
 
     // Extract text content from HTML
     const textMatch = htmlString.match(/>([^<]+)</);
-    if (!textMatch) {
-      throw new Error('Could not extract text from HTML');
-    }
+    const buttonText = textMatch ? textMatch[1].trim() : '';
     
-    const buttonText = textMatch[1].trim();
-    
-    // Try to find by text using XPath (works for both <button> and <a>)
-    const xpath = `//*[self::button or self::a][contains(text(), '${buttonText}')]`;
-    const elements = await this.page.$x(xpath);
-    
-    if (elements.length > 0) {
-      await elements[0].click();
-      return true;
+    // Try to find by text content using evaluate
+    if (buttonText) {
+      const clicked = await this.page.evaluate((text) => {
+        const elements = Array.from(document.querySelectorAll('button, a'));
+        const element = elements.find(el => el.textContent.includes(text));
+        if (element) {
+          element.click();
+          return true;
+        }
+        return false;
+      }, buttonText);
+      
+      if (clicked) return true;
     }
 
     // Fallback: try data-modal attribute
