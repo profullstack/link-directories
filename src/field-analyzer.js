@@ -236,19 +236,19 @@ export class FieldAnalyzer {
     // Extract text content from HTML
     const textMatch = htmlString.match(/>([^<]+)</);
     const buttonText = textMatch ? textMatch[1].trim() : '';
-    
+
     // Try to find by text content using evaluate
     if (buttonText) {
       const clicked = await this.page.evaluate((text) => {
         const elements = Array.from(document.querySelectorAll('button, a'));
-        const element = elements.find(el => el.textContent.includes(text));
+        const element = elements.find((el) => el.textContent.includes(text));
         if (element) {
           element.click();
           return true;
         }
         return false;
       }, buttonText);
-      
+
       if (clicked) return true;
     }
 

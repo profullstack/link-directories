@@ -3,7 +3,10 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 import ora from 'ora';
-import { parseDirectoriesCSV, getUnsubmittedDirectories } from './utils/csv-parser.js';
+import {
+  parseDirectoriesCSV,
+  getUnsubmittedDirectories,
+} from './utils/csv-parser.js';
 import { SiteInspector } from './site-inspector.js';
 import { SmartSubmissionBot } from './smart-submission-bot.js';
 import { FieldAnalyzer } from './field-analyzer.js';
@@ -26,9 +29,13 @@ class DirectoriesCLI {
    * Display welcome banner
    */
   displayBanner() {
-    console.log(chalk.cyan.bold('\n╔════════════════════════════════════════╗'));
+    console.log(
+      chalk.cyan.bold('\n╔════════════════════════════════════════╗')
+    );
     console.log(chalk.cyan.bold('║   📁 Directories Submission CLI       ║'));
-    console.log(chalk.cyan.bold('╚════════════════════════════════════════╝\n'));
+    console.log(
+      chalk.cyan.bold('╚════════════════════════════════════════╝\n')
+    );
   }
 
   /**
@@ -80,7 +87,10 @@ class DirectoriesCLI {
         name: 'action',
         message: 'What would you like to do?',
         choices: [
-          { name: '🔬 Analyze All Directories (Comprehensive)', value: 'analyze' },
+          {
+            name: '🔬 Analyze All Directories (Comprehensive)',
+            value: 'analyze',
+          },
           { name: '🔍 Inspect Sites (Analyze forms)', value: 'inspect' },
           { name: '🚀 Submit to Directories', value: 'submit' },
           { name: '📊 View Statistics', value: 'stats' },
@@ -107,15 +117,23 @@ class DirectoriesCLI {
       const unsubmitted = getUnsubmittedDirectories(directories);
 
       spinner.succeed(`Found ${directories.length} total directories`);
-      
+
       if (submitted.length > 0) {
-        console.log(chalk.gray(`\n📋 Skipping ${submitted.length} already submitted directories:`));
+        console.log(
+          chalk.gray(
+            `\n📋 Skipping ${submitted.length} already submitted directories:`
+          )
+        );
         submitted.forEach((d) => {
           console.log(chalk.gray(`   • ${d.name}`));
         });
       }
-      
-      console.log(chalk.green(`\n✅ Processing ${unsubmitted.length} unsubmitted directories\n`));
+
+      console.log(
+        chalk.green(
+          `\n✅ Processing ${unsubmitted.length} unsubmitted directories\n`
+        )
+      );
 
       if (unsubmitted.length === 0) {
         console.log(chalk.green('\n✅ No directories to analyze!\n'));
@@ -123,10 +141,14 @@ class DirectoriesCLI {
       }
 
       // Step 1: Analyze all directories for field requirements
-      console.log(chalk.cyan('\n📋 Step 1: Analyzing field requirements across all directories...\n'));
+      console.log(
+        chalk.cyan(
+          '\n📋 Step 1: Analyzing field requirements across all directories...\n'
+        )
+      );
 
       const analyzer = new FieldAnalyzer({ headless: false, timeout: 30000 });
-      
+
       spinner.start('Initializing browser...');
       await analyzer.initialize();
       spinner.succeed('Browser initialized');
@@ -135,7 +157,7 @@ class DirectoriesCLI {
 
       const analysisResults = await analyzer.analyzeAll(unsubmitted);
       const fieldAnalysis = await analyzer.saveResults(analysisResults);
-      
+
       this.fieldRequirements = fieldAnalysis.fieldRequirements;
 
       // Generate site-configs.json from the analysis
@@ -149,11 +171,16 @@ class DirectoriesCLI {
       // Display field requirements
       console.log(chalk.cyan('\n📊 Required Fields Found:\n'));
       this.fieldRequirements.slice(0, 10).forEach((field) => {
-        console.log(chalk.blue(`  • ${field.fieldKey}`), chalk.gray(`(${field.count} sites, ${field.frequency}%)`));
+        console.log(
+          chalk.blue(`  • ${field.fieldKey}`),
+          chalk.gray(`(${field.count} sites, ${field.frequency}%)`)
+        );
       });
 
       // Step 2: Prompt for website URL to generate values
-      console.log(chalk.cyan('\n🌐 Step 2: Generate values from your website...\n'));
+      console.log(
+        chalk.cyan('\n🌐 Step 2: Generate values from your website...\n')
+      );
 
       const { websiteUrl } = await inquirer.prompt([
         {
@@ -174,20 +201,23 @@ class DirectoriesCLI {
 
       // Generate values from website
       const generator = new ValueGenerator({ headless: false, timeout: 30000 });
-      
+
       spinner.start('Analyzing your website...');
       await generator.initialize();
-      
+
       const websiteData = await generator.generateFromUrl(websiteUrl);
-      this.generatedValues = generator.generateSmartValues(websiteData.metadata, websiteUrl);
-      
+      this.generatedValues = generator.generateSmartValues(
+        websiteData.metadata,
+        websiteUrl
+      );
+
       await generator.close();
-      
+
       // Step 2.5: Enhance with AI if available
       const aiHelper = new AIHelper();
       if (aiHelper.isEnabled()) {
         spinner.start('Enhancing with AI...');
-        
+
         const aiContent = await aiHelper.generateAll({
           url: websiteUrl,
           title: websiteData.metadata.title,
@@ -207,11 +237,15 @@ class DirectoriesCLI {
         }
 
         spinner.succeed('AI enhancement complete');
-        console.log(chalk.green('   🤖 AI improved: description, category, tags'));
+        console.log(
+          chalk.green('   🤖 AI improved: description, category, tags')
+        );
       } else {
-        console.log(chalk.yellow('   ℹ️  AI disabled (no OPENAI_API_KEY in .env)'));
+        console.log(
+          chalk.yellow('   ℹ️  AI disabled (no OPENAI_API_KEY in .env)')
+        );
       }
-      
+
       await generator.saveValues({
         metadata: websiteData.metadata,
         smartValues: this.generatedValues,
@@ -222,26 +256,51 @@ class DirectoriesCLI {
       spinner.succeed('Website analyzed');
 
       // Step 3: Show generated values and prompt for missing ones
-      console.log(chalk.cyan('\n✨ Step 3: Review and complete your submission data...\n'));
+      console.log(
+        chalk.cyan('\n✨ Step 3: Review and complete your submission data...\n')
+      );
       console.log(chalk.green('Generated values from your website:\n'));
 
       // Display what was generated
       Object.entries(this.generatedValues).forEach(([key, value]) => {
         if (value) {
-          console.log(chalk.blue(`  ✓ ${key}:`), chalk.gray(value.substring(0, 60) + (value.length > 60 ? '...' : '')));
+          console.log(
+            chalk.blue(`  ✓ ${key}:`),
+            chalk.gray(
+              value.substring(0, 60) + (value.length > 60 ? '...' : '')
+            )
+          );
         }
       });
 
       // Prompt for all required fields with generated defaults
-      console.log(chalk.yellow('\n📝 Please review and fill in all required information:\n'));
+      console.log(
+        chalk.yellow(
+          '\n📝 Please review and fill in all required information:\n'
+        )
+      );
 
-      const submissionData = await this.promptForAllFields(this.generatedValues, this.fieldRequirements);
+      const submissionData = await this.promptForAllFields(
+        this.generatedValues,
+        this.fieldRequirements
+      );
       this.submissionData = submissionData;
+
+      // Save the complete submission data for later use
+      await writeFile('generated-values.json', JSON.stringify({
+        metadata: websiteData.metadata,
+        smartValues: this.submissionData,
+        aiEnhanced: aiHelper.isEnabled(),
+        screenshot: websiteData.screenshot,
+      }, null, 2));
 
       // Step 4: Show summary and confirm
       console.log(chalk.cyan('\n📋 Submission Summary:\n'));
       Object.entries(submissionData).forEach(([key, value]) => {
-        console.log(chalk.blue(`  ${key}:`), chalk.white(value.substring(0, 80) + (value.length > 80 ? '...' : '')));
+        console.log(
+          chalk.blue(`  ${key}:`),
+          chalk.white(value.substring(0, 80) + (value.length > 80 ? '...' : ''))
+        );
       });
 
       const { proceedToSubmit } = await inquirer.prompt([
@@ -256,9 +315,12 @@ class DirectoriesCLI {
       if (proceedToSubmit) {
         await this.runSubmissionsWithData(unsubmitted);
       } else {
-        console.log(chalk.yellow('\n⚠️  Analysis complete. Run "Submit to Directories" when ready.\n'));
+        console.log(
+          chalk.yellow(
+            '\n⚠️  Analysis complete. Run "Submit to Directories" when ready.\n'
+          )
+        );
       }
-
     } catch (error) {
       spinner.fail(`Analysis failed: ${error.message}`);
       console.error(chalk.red(`\n❌ Error: ${error.message}\n`));
@@ -290,16 +352,20 @@ class DirectoriesCLI {
 
       if (result.fields && result.fields.length > 0) {
         const fieldMapping = {};
-        
+
+        // Use only the FIRST occurrence of each field type for this specific site
+        const usedKeys = new Set();
+
         result.fields.forEach((field) => {
           const fieldKey = this.mapFieldToKey(field);
-          if (fieldKey) {
+          if (fieldKey && !usedKeys.has(fieldKey)) {
             fieldMapping[fieldKey] = {
               selector: this.getFieldSelector(field),
               type: field.type,
               name: field.name,
               id: field.id,
             };
+            usedKeys.add(fieldKey);
           }
         });
 
@@ -324,16 +390,23 @@ class DirectoriesCLI {
     const name = (field.name || field.id || field.label).toLowerCase();
     const type = field.type.toLowerCase();
 
-    if (name.includes('name') && !name.includes('first') && !name.includes('last')) return 'name';
+    if (
+      name.includes('name') &&
+      !name.includes('first') &&
+      !name.includes('last')
+    )
+      return 'name';
     if (name.includes('first') && name.includes('name')) return 'firstName';
     if (name.includes('last') && name.includes('name')) return 'lastName';
     if (name.includes('email') || type === 'email') return 'email';
-    if (name.includes('url') || name.includes('website') || type === 'url') return 'url';
-    if (name.includes('description') || type === 'textarea') return 'description';
+    if (name.includes('url') || name.includes('website') || type === 'url')
+      return 'url';
+    if (name.includes('description') || type === 'textarea')
+      return 'description';
     if (name.includes('category')) return 'category';
     if (name.includes('tag')) return 'tags';
     if (name.includes('title')) return 'title';
-    
+
     return null;
   }
 
@@ -361,13 +434,27 @@ class DirectoriesCLI {
     const prompts = [];
 
     // Core fields that are always needed
-    const coreFields = ['name', 'url', 'email', 'description', 'category', 'tags'];
+    const coreFields = [
+      'name',
+      'firstName',
+      'lastName',
+      'url',
+      'email',
+      'description',
+      'category',
+      'tags',
+    ];
 
     coreFields.forEach((field) => {
       const defaultValue = generatedValues[field] || '';
-      
+
       let message = field.charAt(0).toUpperCase() + field.slice(1) + ':';
-      let validate = (input) => input.trim() ? true : `${field} is required`;
+      let validate = (input) => (input.trim() ? true : `${field} is required`);
+
+      // firstName and lastName are optional
+      if (field === 'firstName' || field === 'lastName') {
+        validate = () => true; // Optional
+      }
 
       if (field === 'url') {
         validate = (input) => {
@@ -389,8 +476,10 @@ class DirectoriesCLI {
         message = 'Description (50-300 chars):';
         validate = (input) => {
           if (!input.trim()) return 'Description is required';
-          if (input.length < 50) return 'Description should be at least 50 characters';
-          if (input.length > 300) return 'Description should be less than 300 characters';
+          if (input.length < 50)
+            return 'Description should be at least 50 characters';
+          if (input.length > 300)
+            return 'Description should be less than 300 characters';
           return true;
         };
       }
@@ -421,7 +510,8 @@ class DirectoriesCLI {
         name: 'limit',
         message: 'How many directories to submit to? (0 for all)',
         default: 10,
-        validate: (input) => (input >= 0 ? true : 'Please enter a non-negative number'),
+        validate: (input) =>
+          input >= 0 ? true : 'Please enter a non-negative number',
       },
     ]);
 
@@ -443,9 +533,14 @@ class DirectoriesCLI {
 
       await mkdir('screenshots', { recursive: true });
 
-      console.log(chalk.cyan(`\n📝 Submitting to ${toSubmit.length} directories...\n`));
+      console.log(
+        chalk.cyan(`\n📝 Submitting to ${toSubmit.length} directories...\n`)
+      );
 
-      const results = await bot.processDirectoriesWithConfigs(toSubmit, this.submissionData);
+      const results = await bot.processDirectoriesWithConfigs(
+        toSubmit,
+        this.submissionData
+      );
 
       spinner.start('Saving results...');
       await bot.saveResults(results);
@@ -470,6 +565,125 @@ class DirectoriesCLI {
   }
 
   /**
+   * Run submissions only (using existing generated files)
+   */
+  async runSubmissionsOnly() {
+    console.log(chalk.cyan('\n🚀 Starting Submissions...\n'));
+
+    // Check if required files exist
+    try {
+      const { access } = await import('fs/promises');
+      await access('./site-configs.json');
+      await access('./generated-values.json');
+    } catch (error) {
+      console.log(chalk.red('\n❌ Required files not found!\n'));
+      console.log(chalk.yellow('Run "Analyze" first to generate:'));
+      console.log(chalk.yellow('  - site-configs.json'));
+      console.log(chalk.yellow('  - generated-values.json\n'));
+      return;
+    }
+
+    // Load generated values
+    const { readFile } = await import('fs/promises');
+    const valuesContent = await readFile('./generated-values.json', 'utf-8');
+    const savedData = JSON.parse(valuesContent);
+    this.submissionData = savedData.smartValues;
+
+    console.log(chalk.green('✅ Loaded previous submission data\n'));
+    
+    // Check for missing required fields
+    const requiredFields = ['name', 'url', 'email', 'description', 'category', 'tags'];
+    const missingFields = requiredFields.filter(f => !this.submissionData[f] || !this.submissionData[f].trim());
+    
+    if (missingFields.length > 0) {
+      console.log(chalk.yellow(`\n⚠️  Missing required fields: ${missingFields.join(', ')}\n`));
+      console.log(chalk.cyan('📝 Please fill in the missing information:\n'));
+      
+      for (const field of missingFields) {
+        const { value } = await inquirer.prompt([{
+          type: 'input',
+          name: 'value',
+          message: `${field.charAt(0).toUpperCase() + field.slice(1)}:`,
+          validate: (input) => input.trim() ? true : `${field} is required`,
+        }]);
+        this.submissionData[field] = value;
+      }
+      
+      // Save updated data
+      await writeFile('generated-values.json', JSON.stringify({
+        smartValues: this.submissionData,
+      }, null, 2));
+    }
+    
+    // Prompt for optional fields if missing
+    const optionalFields = ['firstName', 'lastName'];
+    const missingOptional = optionalFields.filter(f => !this.submissionData[f]);
+    
+    if (missingOptional.length > 0) {
+      console.log(chalk.cyan('\n📝 Optional fields (press Enter to skip):\n'));
+      
+      for (const field of missingOptional) {
+        const { value } = await inquirer.prompt([{
+          type: 'input',
+          name: 'value',
+          message: `${field.charAt(0).toUpperCase() + field.slice(1)} (optional):`,
+          default: '',
+        }]);
+        if (value.trim()) {
+          this.submissionData[field] = value;
+        }
+      }
+    }
+    
+    console.log(chalk.cyan('\n📋 Final submission data:\n'));
+    Object.entries(this.submissionData).forEach(([key, value]) => {
+      if (value) {
+        console.log(
+          chalk.blue(`  ${key}:`),
+          chalk.gray(value.substring(0, 60) + (value.length > 60 ? '...' : ''))
+        );
+      }
+    });
+
+    const { confirm } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirm',
+        message: '\nProceed with submission?',
+        default: true,
+      },
+    ]);
+
+    if (!confirm) {
+      console.log(chalk.yellow('\n⚠️  Submission cancelled\n'));
+      return;
+    }
+
+    // Load directories
+    const spinner = ora('Loading directories...').start();
+    const directories = await parseDirectoriesCSV(this.csvPath);
+    const unsubmitted = getUnsubmittedDirectories(directories);
+    spinner.succeed(`Found ${unsubmitted.length} unsubmitted directories`);
+
+    // Prompt for limit
+    const { limit } = await inquirer.prompt([
+      {
+        type: 'number',
+        name: 'limit',
+        message: 'How many directories to submit to? (0 for all)',
+        default: 10,
+        validate: (input) =>
+          input >= 0 ? true : 'Please enter a non-negative number',
+      },
+    ]);
+
+    const toSubmit = limit > 0 ? unsubmitted.slice(0, limit) : unsubmitted;
+
+    // Run submissions
+    await this.runSubmissionsWithData(toSubmit);
+  }
+
+  /**
    * Show statistics
    */
   async showStatistics() {
@@ -486,7 +700,11 @@ class DirectoriesCLI {
       console.log(chalk.blue(`  📁 Total directories: ${directories.length}`));
       console.log(chalk.green(`  ✅ Submitted: ${submitted.length}`));
       console.log(chalk.yellow(`  ⏳ Pending: ${unsubmitted.length}`));
-      console.log(chalk.gray(`  📈 Progress: ${Math.round((submitted.length / directories.length) * 100)}%\n`));
+      console.log(
+        chalk.gray(
+          `  📈 Progress: ${Math.round((submitted.length / directories.length) * 100)}%\n`
+        )
+      );
     } catch (error) {
       spinner.fail('Failed to load statistics');
       console.error(chalk.red(`\n❌ Error: ${error.message}\n`));
@@ -499,9 +717,6 @@ class DirectoriesCLI {
   async run() {
     this.displayBanner();
 
-    // Reset state at the start of each run
-    await this.resetState();
-
     let running = true;
 
     while (running) {
@@ -509,7 +724,18 @@ class DirectoriesCLI {
 
       switch (action) {
         case 'analyze':
+          await this.resetState();
           await this.runAnalysis();
+          break;
+        case 'inspect':
+          console.log(
+            chalk.yellow(
+              '\n⚠️  Inspect feature coming soon. Use Analyze for now.\n'
+            )
+          );
+          break;
+        case 'submit':
+          await this.runSubmissionsOnly();
           break;
         case 'stats':
           await this.showStatistics();

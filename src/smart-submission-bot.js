@@ -50,9 +50,10 @@ export class SmartSubmissionBot extends SubmissionBot {
     }
 
     // Use submit_url if available, otherwise use main url
-    const targetUrl = (directory.submit_url && directory.submit_url.trim())
-      ? directory.submit_url
-      : directory.url;
+    const targetUrl =
+      directory.submit_url && directory.submit_url.trim()
+        ? directory.submit_url
+        : directory.url;
 
     console.log(`\n📝 Submitting to: ${directory.name}`);
     console.log(`   URL: ${targetUrl}`);
@@ -76,34 +77,27 @@ export class SmartSubmissionBot extends SubmissionBot {
     }
 
     try {
-      // Navigate to the site
-      await this.page.goto(directory.url, {
+      // Navigate to the submission page
+      await this.page.goto(targetUrl, {
         waitUntil: 'networkidle2',
         timeout: this.config.timeout,
       });
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // Handle link-based submission
+      // If submit_button is specified, click it to open modal
       if (
-        siteConfig.submissionMethod === 'link' &&
-        siteConfig.recommendedLink
+        directory.submit_button &&
+        directory.submit_button.trim() &&
+        !directory.submit_url
       ) {
-        console.log(
-          `   🔗 Clicking submission link: ${siteConfig.recommendedLink.text}`
-        );
-        const linkClicked = await this.clickSubmissionLink(
-          siteConfig.recommendedLink
-        );
-
-        if (!linkClicked) {
-          return {
-            success: false,
-            message: 'Could not find submission link',
-          };
+        try {
+          await this.clickButtonFromHtml(directory.submit_button);
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          console.log(`   🖱️  Clicked submit button`);
+        } catch (error) {
+          console.log(`   ⚠️  Could not click submit button: ${error.message}`);
         }
-
-        await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
       // Fill the form using site-specific field mapping
@@ -114,7 +108,7 @@ export class SmartSubmissionBot extends SubmissionBot {
         // Wait for CAPTCHA if needed
         if (siteConfig.requiresCaptcha) {
           console.log('   ⏸️  Waiting 30 seconds for CAPTCHA completion...');
-          await this.page.waitForTimeout(30000);
+          await new Promise((resolve) => setTimeout(resolve, 30000));
         }
 
         // Submit the form
@@ -125,7 +119,7 @@ export class SmartSubmissionBot extends SubmissionBot {
           );
 
           if (submitted) {
-            await this.page.waitForTimeout(3000);
+            await new Promise((resolve) => setTimeout(resolve, 3000));
             return {
               success: true,
               message: 'Form submitted successfully',
@@ -152,25 +146,50 @@ export class SmartSubmissionBot extends SubmissionBot {
   }
 
   /**
-   * Click a submission link
+   * Click button from HTML snippet
    */
-  async clickSubmissionLink(linkInfo) {
-    try {
-      const linkSelector = `a[href*="${linkInfo.href.split('/').pop()}"]`;
-      const link = await this.page.$(linkSelector);
-
-      if (link) {
-        await link.click();
-        await this.page
-          .waitForNavigation({ waitUntil: 'networkidle2' })
-          .catch(() => {});
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.warn(`   Could not click link: ${error.message}`);
-      return false;
+  async clickButtonFromHtml(htmlString) {
+    // If it's already a simple selector, use it directly
+    if (!htmlString.includes('<')) {
+      await this.page.click(htmlString);
+      return true;
     }
+
+    // Extract text content from HTML
+    const textMatch = htmlString.match(/>([^<]+)</);
+    const buttonText = textMatch ? textMatch[1].trim() : '';
+
+    // Try to find by text content using evaluate
+    if (buttonText) {
+      const clicked = await this.page.evaluate((text) => {
+        const elements = Array.from(document.querySelectorAll('button, a'));
+        const element = elements.find((el) => el.textContent.includes(text));
+        if (element) {
+          element.click();
+          return true;
+        }
+        return false;
+      }, buttonText);
+
+      if (clicked) return true;
+    }
+
+    // Fallback: try data-modal attribute
+    const dataModalMatch = htmlString.match(/data-modal="([^"]+)"/);
+    if (dataModalMatch) {
+      await this.page.click(`[data-modal="${dataModalMatch[1]}"]`);
+      return true;
+    }
+
+    // Fallback: try first class
+    const classMatch = htmlString.match(/class="([^"]+)"/);
+    if (classMatch) {
+      const firstClass = classMatch[1].split(' ')[0];
+      await this.page.click(`.${firstClass}`);
+      return true;
+    }
+
+    throw new Error('Could not find button');
   }
 
   /**
@@ -242,42 +261,6 @@ export class SmartSubmissionBot extends SubmissionBot {
   }
 
   /**
-   * Extract CSS selector from HTML button string
-   */
-  extractButtonSelector(htmlString) {
-    // If it's already a simple selector, return it
-    if (!htmlString.includes('<')) {
-      return htmlString;
-    }
-
-    // Try to extract class
-    const classMatch = htmlString.match(/class="([^"]+)"/);
-    if (classMatch) {
-      const firstClass = classMatch[1].split(' ')[0];
-      return `.${firstClass}`;
-    }
-
-    // Try to extract id
-    const idMatch = htmlString.match(/id="([^"]+)"/);
-    if (idMatch) {
-      return `#${idMatch[1]}`;
-    }
-
-    // Try to extract type and text
-    const typeMatch = htmlString.match(/<(button|a)/);
-    const textMatch = htmlString.match(/>([^<]+)</);
-    
-    if (typeMatch && textMatch) {
-      const tag = typeMatch[1];
-      const text = textMatch[1].trim();
-      return `${tag}:contains("${text}")`;
-    }
-
-    // Fallback to button
-    return 'button';
-  }
-
-  /**
    * Process multiple directories with smart submission
    */
   async processDirectoriesWithConfigs(directories, submissionData) {
@@ -299,7 +282,9 @@ export class SmartSubmissionBot extends SubmissionBot {
           console.log(
             `   ⏳ Waiting ${this.config.delayBetweenSubmissions}ms...`
           );
-          await new Promise(resolve => setTimeout(resolve, this.config.delayBetweenSubmissions));
+          await new Promise((resolve) =>
+            setTimeout(resolve, this.config.delayBetweenSubmissions)
+          );
         }
       } catch (error) {
         results.push({
