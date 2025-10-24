@@ -56,11 +56,9 @@ export class FieldAnalyzer {
         !directory.submit_url
       ) {
         try {
-          await this.page.click(directory.submit_button);
+          await this.clickButtonFromHtml(directory.submit_button);
           await new Promise((resolve) => setTimeout(resolve, 2000));
-          console.log(
-            `   🖱️  Clicked submit button: ${directory.submit_button}`
-          );
+          console.log(`   🖱️  Clicked submit button`);
         } catch (error) {
           console.log(`   ⚠️  Could not click submit button: ${error.message}`);
         }
@@ -224,6 +222,51 @@ export class FieldAnalyzer {
   /**
    * Analyze all directories
    */
+
+  /**
+   * Click button from HTML snippet using XPath
+   */
+  async clickButtonFromHtml(htmlString) {
+    // If it's already a simple selector, use it directly
+    if (!htmlString.includes('<')) {
+      await this.page.click(htmlString);
+      return true;
+    }
+
+    // Extract text content from HTML
+    const textMatch = htmlString.match(/>([^<]+)</);
+    if (!textMatch) {
+      throw new Error('Could not extract text from HTML');
+    }
+    
+    const buttonText = textMatch[1].trim();
+    
+    // Try to find by text using XPath (works for both <button> and <a>)
+    const xpath = `//*[self::button or self::a][contains(text(), '${buttonText}')]`;
+    const elements = await this.page.$x(xpath);
+    
+    if (elements.length > 0) {
+      await elements[0].click();
+      return true;
+    }
+
+    // Fallback: try data-modal attribute
+    const dataModalMatch = htmlString.match(/data-modal="([^"]+)"/);
+    if (dataModalMatch) {
+      await this.page.click(`[data-modal="${dataModalMatch[1]}"]`);
+      return true;
+    }
+
+    // Fallback: try first class
+    const classMatch = htmlString.match(/class="([^"]+)"/);
+    if (classMatch) {
+      const firstClass = classMatch[1].split(' ')[0];
+      await this.page.click(`.${firstClass}`);
+      return true;
+    }
+
+    throw new Error('Could not find button');
+  }
   async analyzeAll(directories) {
     const results = [];
 
