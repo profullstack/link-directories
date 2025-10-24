@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
-import { parseDirectoriesCSV, getUnsubmittedDirectories } from './utils/csv-parser.js';
+import {
+  parseDirectoriesCSV,
+  getUnsubmittedDirectories,
+} from './utils/csv-parser.js';
 import { SiteInspector } from './site-inspector.js';
 
 /**
@@ -8,7 +11,7 @@ import { SiteInspector } from './site-inspector.js';
  */
 async function main() {
   console.log('🔍 Site Inspector - Analyzing Production Forms\n');
-  console.log('=' .repeat(60));
+  console.log('='.repeat(60));
 
   // Parse command line arguments
   const args = process.argv.slice(2);
@@ -52,7 +55,7 @@ async function main() {
   try {
     await inspector.initialize();
     console.log('🌐 Browser initialized\n');
-    console.log('=' .repeat(60));
+    console.log('='.repeat(60));
 
     // Inspect sites
     const results = await inspector.inspectSites(directoriesToInspect);
@@ -66,8 +69,12 @@ async function main() {
 
     const successful = results.filter((r) => !r.error).length;
     const failed = results.filter((r) => r.error).length;
-    const withForms = results.filter((r) => r.forms && r.forms.length > 0).length;
-    const withCaptcha = results.filter((r) => r.hasRecaptcha || r.hasHcaptcha).length;
+    const withForms = results.filter(
+      (r) => r.forms && r.forms.length > 0
+    ).length;
+    const withCaptcha = results.filter(
+      (r) => r.hasRecaptcha || r.hasHcaptcha
+    ).length;
 
     console.log(`✅ Successfully inspected: ${successful}`);
     console.log(`❌ Failed to inspect: ${failed}`);

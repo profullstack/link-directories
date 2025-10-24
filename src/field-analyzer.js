@@ -37,23 +37,30 @@ export class FieldAnalyzer {
 
     try {
       // Use submit_url if available and not empty, otherwise use main url
-      const targetUrl = (directory.submit_url && directory.submit_url.trim())
-        ? directory.submit_url
-        : directory.url;
-      
+      const targetUrl =
+        directory.submit_url && directory.submit_url.trim()
+          ? directory.submit_url
+          : directory.url;
+
       await this.page.goto(targetUrl, {
         waitUntil: 'networkidle2',
         timeout: this.config.timeout,
       });
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // If submit_button is specified and not empty, click it to reveal the form
-      if (directory.submit_button && directory.submit_button.trim() && !directory.submit_url) {
+      if (
+        directory.submit_button &&
+        directory.submit_button.trim() &&
+        !directory.submit_url
+      ) {
         try {
           await this.page.click(directory.submit_button);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          console.log(`   🖱️  Clicked submit button: ${directory.submit_button}`);
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          console.log(
+            `   🖱️  Clicked submit button: ${directory.submit_button}`
+          );
         } catch (error) {
           console.log(`   ⚠️  Could not click submit button: ${error.message}`);
         }
@@ -74,13 +81,16 @@ export class FieldAnalyzer {
         // Extract meta tags
         const metaTags = document.querySelectorAll('meta');
         metaTags.forEach((meta) => {
-          const name = meta.getAttribute('name') || meta.getAttribute('property');
+          const name =
+            meta.getAttribute('name') || meta.getAttribute('property');
           const content = meta.getAttribute('content');
 
           if (name === 'description') metadata.description = content;
           if (name === 'keywords') metadata.keywords = content;
-          if (name === 'og:image' || name === 'twitter:image') metadata.ogImage = content;
-          if (name === 'og:title' || name === 'twitter:title') metadata.ogTitle = content;
+          if (name === 'og:image' || name === 'twitter:image')
+            metadata.ogImage = content;
+          if (name === 'og:title' || name === 'twitter:title')
+            metadata.ogTitle = content;
           if (name === 'og:description' || name === 'twitter:description')
             metadata.ogDescription = content;
         });
@@ -88,7 +98,11 @@ export class FieldAnalyzer {
         // Analyze all forms
         document.querySelectorAll('form').forEach((form) => {
           form.querySelectorAll('input, textarea, select').forEach((field) => {
-            if (field.type === 'hidden' || field.type === 'submit' || field.type === 'button') {
+            if (
+              field.type === 'hidden' ||
+              field.type === 'submit' ||
+              field.type === 'button'
+            ) {
               return;
             }
 
@@ -171,18 +185,29 @@ export class FieldAnalyzer {
     const type = field.type.toLowerCase();
 
     // Common field patterns
-    if (name.includes('name') && !name.includes('first') && !name.includes('last')) {
+    if (
+      name.includes('name') &&
+      !name.includes('first') &&
+      !name.includes('last')
+    ) {
       return 'name';
     }
     if (name.includes('first') && name.includes('name')) return 'firstName';
     if (name.includes('last') && name.includes('name')) return 'lastName';
     if (name.includes('email') || type === 'email') return 'email';
-    if (name.includes('url') || name.includes('website') || name.includes('link')) return 'url';
-    if (name.includes('description') || type === 'textarea') return 'description';
+    if (
+      name.includes('url') ||
+      name.includes('website') ||
+      name.includes('link')
+    )
+      return 'url';
+    if (name.includes('description') || type === 'textarea')
+      return 'description';
     if (name.includes('category')) return 'category';
     if (name.includes('tag')) return 'tags';
     if (name.includes('title')) return 'title';
-    if (name.includes('company') || name.includes('organization')) return 'company';
+    if (name.includes('company') || name.includes('organization'))
+      return 'company';
     if (name.includes('phone') || type === 'tel') return 'phone';
     if (name.includes('twitter')) return 'twitter';
     if (name.includes('linkedin')) return 'linkedin';
@@ -205,7 +230,7 @@ export class FieldAnalyzer {
     for (const directory of directories) {
       const result = await this.analyzeDirectory(directory);
       results.push(result);
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Small delay between requests
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Small delay between requests
     }
 
     return results;

@@ -9,7 +9,7 @@ export async function parseDirectoriesCSV(filePath) {
   try {
     const content = await readFile(filePath, 'utf-8');
     const lines = content.trim().split('\n');
-    
+
     // Skip header line
     const dataLines = lines.slice(1);
 
@@ -18,10 +18,10 @@ export async function parseDirectoriesCSV(filePath) {
       const parts = [];
       let current = '';
       let inQuotes = false;
-      
+
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
-        
+
         if (char === '"') {
           inQuotes = !inQuotes;
         } else if (char === ',' && !inQuotes) {

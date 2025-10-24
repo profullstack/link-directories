@@ -11,7 +11,7 @@ export class AIHelper {
   constructor() {
     this.openai = null;
     this.enabled = false;
-    
+
     if (process.env.OPENAI_API_KEY) {
       this.openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
@@ -50,7 +50,8 @@ Write a concise, engaging description that highlights the key value proposition.
         messages: [
           {
             role: 'system',
-            content: 'You are an expert copywriter specializing in concise, compelling product descriptions for directory listings.',
+            content:
+              'You are an expert copywriter specializing in concise, compelling product descriptions for directory listings.',
           },
           {
             role: 'user',
@@ -93,7 +94,8 @@ Respond with ONLY the category name, nothing else.`;
         messages: [
           {
             role: 'system',
-            content: 'You are a categorization expert. Respond with only the category name.',
+            content:
+              'You are a categorization expert. Respond with only the category name.',
           },
           {
             role: 'user',
@@ -140,7 +142,8 @@ Respond with ONLY the comma-separated tags, nothing else.`;
         messages: [
           {
             role: 'system',
-            content: 'You are a tagging expert. Respond with only comma-separated tags.',
+            content:
+              'You are a tagging expert. Respond with only comma-separated tags.',
           },
           {
             role: 'user',
@@ -193,7 +196,8 @@ TAGS: [tag1, tag2, tag3, ...]`;
         messages: [
           {
             role: 'system',
-            content: 'You are an expert at creating optimized directory submission content. Follow the format exactly.',
+            content:
+              'You are an expert at creating optimized directory submission content. Follow the format exactly.',
           },
           {
             role: 'user',
@@ -205,9 +209,11 @@ TAGS: [tag1, tag2, tag3, ...]`;
       });
 
       const response = completion.choices[0]?.message?.content?.trim();
-      
+
       // Parse the response
-      const descMatch = response?.match(/DESCRIPTION:\s*(.+?)(?=\nCATEGORY:|$)/s);
+      const descMatch = response?.match(
+        /DESCRIPTION:\s*(.+?)(?=\nCATEGORY:|$)/s
+      );
       const catMatch = response?.match(/CATEGORY:\s*(.+?)(?=\nTAGS:|$)/s);
       const tagsMatch = response?.match(/TAGS:\s*(.+?)$/s);
 

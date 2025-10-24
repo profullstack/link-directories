@@ -40,7 +40,7 @@ export class ValueGenerator {
         timeout: this.config.timeout,
       });
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Extract all metadata
       const metadata = await this.page.evaluate(() => {
@@ -64,7 +64,8 @@ export class ValueGenerator {
 
         // Extract meta tags
         document.querySelectorAll('meta').forEach((meta) => {
-          const name = meta.getAttribute('name') || meta.getAttribute('property');
+          const name =
+            meta.getAttribute('name') || meta.getAttribute('property');
           const content = meta.getAttribute('content');
 
           if (!name || !content) return;
@@ -85,7 +86,8 @@ export class ValueGenerator {
           // Twitter Card
           if (lowerName === 'twitter:card') data.twitterCard = content;
           if (lowerName === 'twitter:title') data.twitterTitle = content;
-          if (lowerName === 'twitter:description') data.twitterDescription = content;
+          if (lowerName === 'twitter:description')
+            data.twitterDescription = content;
           if (lowerName === 'twitter:image') data.twitterImage = content;
         });
 
@@ -169,13 +171,16 @@ export class ValueGenerator {
     const text = `${keywords} ${description}`.toLowerCase();
 
     // Common categories
-    if (text.includes('ai') || text.includes('artificial intelligence')) return 'AI Tools';
-    if (text.includes('saas') || text.includes('software as a service')) return 'SaaS';
+    if (text.includes('ai') || text.includes('artificial intelligence'))
+      return 'AI Tools';
+    if (text.includes('saas') || text.includes('software as a service'))
+      return 'SaaS';
     if (text.includes('productivity')) return 'Productivity';
     if (text.includes('marketing')) return 'Marketing';
     if (text.includes('analytics')) return 'Analytics';
     if (text.includes('design')) return 'Design';
-    if (text.includes('development') || text.includes('developer')) return 'Development';
+    if (text.includes('development') || text.includes('developer'))
+      return 'Development';
     if (text.includes('business')) return 'Business';
     if (text.includes('finance')) return 'Finance';
     if (text.includes('education')) return 'Education';

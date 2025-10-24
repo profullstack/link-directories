@@ -17,11 +17,15 @@ export class SmartSubmissionBot extends SubmissionBot {
     try {
       const content = await readFile(configPath, 'utf-8');
       this.siteConfigs = JSON.parse(content);
-      console.log(`✅ Loaded configurations for ${Object.keys(this.siteConfigs).length} sites`);
+      console.log(
+        `✅ Loaded configurations for ${Object.keys(this.siteConfigs).length} sites`
+      );
       return true;
     } catch (error) {
       console.warn(`⚠️  Could not load site configs: ${error.message}`);
-      console.warn('   You need to run "Analyze" or "Inspect" first to generate configurations');
+      console.warn(
+        '   You need to run "Analyze" or "Inspect" first to generate configurations'
+      );
       this.siteConfigs = {};
       return false;
     }
@@ -45,12 +49,19 @@ export class SmartSubmissionBot extends SubmissionBot {
       return await this.visitDirectory(directory.url, directory.name);
     }
 
+    // Use submit_url if available, otherwise use main url
+    const targetUrl = (directory.submit_url && directory.submit_url.trim())
+      ? directory.submit_url
+      : directory.url;
+
     console.log(`\n📝 Submitting to: ${directory.name}`);
-    console.log(`   URL: ${directory.url}`);
+    console.log(`   URL: ${targetUrl}`);
 
     // Check for manual submission requirements
     if (siteConfig.manualSubmissionRequired || siteConfig.error) {
-      console.log(`   ⚠️  Manual submission required: ${siteConfig.error || 'Complex form'}`);
+      console.log(
+        `   ⚠️  Manual submission required: ${siteConfig.error || 'Complex form'}`
+      );
       return {
         success: false,
         message: 'Manual submission required',
@@ -71,13 +82,20 @@ export class SmartSubmissionBot extends SubmissionBot {
         timeout: this.config.timeout,
       });
 
-      await this.page.waitForTimeout(2000);
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Handle link-based submission
-      if (siteConfig.submissionMethod === 'link' && siteConfig.recommendedLink) {
-        console.log(`   🔗 Clicking submission link: ${siteConfig.recommendedLink.text}`);
-        const linkClicked = await this.clickSubmissionLink(siteConfig.recommendedLink);
-        
+      if (
+        siteConfig.submissionMethod === 'link' &&
+        siteConfig.recommendedLink
+      ) {
+        console.log(
+          `   🔗 Clicking submission link: ${siteConfig.recommendedLink.text}`
+        );
+        const linkClicked = await this.clickSubmissionLink(
+          siteConfig.recommendedLink
+        );
+
         if (!linkClicked) {
           return {
             success: false,
@@ -85,7 +103,7 @@ export class SmartSubmissionBot extends SubmissionBot {
           };
         }
 
-        await this.page.waitForTimeout(2000);
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
       // Fill the form using site-specific field mapping
@@ -140,10 +158,12 @@ export class SmartSubmissionBot extends SubmissionBot {
     try {
       const linkSelector = `a[href*="${linkInfo.href.split('/').pop()}"]`;
       const link = await this.page.$(linkSelector);
-      
+
       if (link) {
         await link.click();
-        await this.page.waitForNavigation({ waitUntil: 'networkidle2' }).catch(() => {});
+        await this.page
+          .waitForNavigation({ waitUntil: 'networkidle2' })
+          .catch(() => {});
         return true;
       }
       return false;
@@ -159,7 +179,7 @@ export class SmartSubmissionBot extends SubmissionBot {
   async fillFormWithMapping(fieldMapping, submissionData) {
     for (const [fieldName, fieldConfig] of Object.entries(fieldMapping)) {
       const value = submissionData[fieldName];
-      
+
       if (!value) {
         console.log(`   ⚠️  No value provided for ${fieldName}`);
         continue;
@@ -167,9 +187,11 @@ export class SmartSubmissionBot extends SubmissionBot {
 
       try {
         const element = await this.page.$(fieldConfig.selector);
-        
+
         if (!element) {
-          console.log(`   ⚠️  Field not found: ${fieldName} (${fieldConfig.selector})`);
+          console.log(
+            `   ⚠️  Field not found: ${fieldName} (${fieldConfig.selector})`
+          );
           continue;
         }
 
@@ -197,24 +219,62 @@ export class SmartSubmissionBot extends SubmissionBot {
   async submitFormWithSelector(selector) {
     try {
       const submitButton = await this.page.$(selector);
-      
+
       if (submitButton) {
         await submitButton.click();
-        await this.page.waitForNavigation({ 
-          waitUntil: 'networkidle2', 
-          timeout: 10000 
-        }).catch(() => {
-          console.log('   (No navigation after submit - might be AJAX)');
-        });
+        await this.page
+          .waitForNavigation({
+            waitUntil: 'networkidle2',
+            timeout: 10000,
+          })
+          .catch(() => {
+            console.log('   (No navigation after submit - might be AJAX)');
+          });
         return true;
       }
-      
+
       console.warn(`   ⚠️  Submit button not found: ${selector}`);
       return false;
     } catch (error) {
       console.warn(`   ⚠️  Error submitting: ${error.message}`);
       return false;
     }
+  }
+
+  /**
+   * Extract CSS selector from HTML button string
+   */
+  extractButtonSelector(htmlString) {
+    // If it's already a simple selector, return it
+    if (!htmlString.includes('<')) {
+      return htmlString;
+    }
+
+    // Try to extract class
+    const classMatch = htmlString.match(/class="([^"]+)"/);
+    if (classMatch) {
+      const firstClass = classMatch[1].split(' ')[0];
+      return `.${firstClass}`;
+    }
+
+    // Try to extract id
+    const idMatch = htmlString.match(/id="([^"]+)"/);
+    if (idMatch) {
+      return `#${idMatch[1]}`;
+    }
+
+    // Try to extract type and text
+    const typeMatch = htmlString.match(/<(button|a)/);
+    const textMatch = htmlString.match(/>([^<]+)</);
+    
+    if (typeMatch && textMatch) {
+      const tag = typeMatch[1];
+      const text = textMatch[1].trim();
+      return `${tag}:contains("${text}")`;
+    }
+
+    // Fallback to button
+    return 'button';
   }
 
   /**
@@ -226,7 +286,7 @@ export class SmartSubmissionBot extends SubmissionBot {
     for (const directory of directories) {
       try {
         const result = await this.submitToDirectory(directory, submissionData);
-        
+
         results.push({
           name: directory.name,
           url: directory.url,
@@ -236,8 +296,10 @@ export class SmartSubmissionBot extends SubmissionBot {
 
         // Delay between submissions
         if (this.config.delayBetweenSubmissions > 0) {
-          console.log(`   ⏳ Waiting ${this.config.delayBetweenSubmissions}ms...`);
-          await this.page.waitForTimeout(this.config.delayBetweenSubmissions);
+          console.log(
+            `   ⏳ Waiting ${this.config.delayBetweenSubmissions}ms...`
+          );
+          await new Promise(resolve => setTimeout(resolve, this.config.delayBetweenSubmissions));
         }
       } catch (error) {
         results.push({

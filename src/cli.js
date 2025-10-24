@@ -9,7 +9,7 @@ import { SmartSubmissionBot } from './smart-submission-bot.js';
 import { FieldAnalyzer } from './field-analyzer.js';
 import { ValueGenerator } from './value-generator.js';
 import { AIHelper } from './ai-helper.js';
-import { mkdir, unlink, rm } from 'fs/promises';
+import { mkdir, unlink, rm, writeFile } from 'fs/promises';
 
 /**
  * Main CLI for directory submissions
@@ -93,349 +93,6 @@ class DirectoriesCLI {
   }
 
   /**
-   * Prompt for submission data
-   */
-  async promptSubmissionData() {
-    console.log(chalk.yellow('\n📝 Enter your submission information:\n'));
-
-    const answers = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'name',
-        message: 'Tool/Product Name:',
-        validate: (input) => (input.trim() ? true : 'Name is required'),
-      },
-      {
-        type: 'input',
-        name: 'url',
-        message: 'Website URL:',
-        validate: (input) => {
-          if (!input.trim()) return 'URL is required';
-          try {
-            new URL(input);
-            return true;
-          } catch {
-            return 'Please enter a valid URL';
-          }
-        },
-      },
-      {
-        type: 'input',
-        name: 'email',
-        message: 'Contact Email:',
-        validate: (input) => {
-          if (!input.trim()) return 'Email is required';
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          return emailRegex.test(input) ? true : 'Please enter a valid email';
-        },
-      },
-      {
-        type: 'input',
-        name: 'description',
-        message: 'Description (150-200 chars):',
-        validate: (input) => {
-          if (!input.trim()) return 'Description is required';
-          if (input.length < 50) return 'Description should be at least 50 characters';
-          if (input.length > 300) return 'Description should be less than 300 characters';
-          return true;
-        },
-      },
-      {
-        type: 'input',
-        name: 'category',
-        message: 'Category (e.g., AI Tools, SaaS):',
-        default: 'AI Tools',
-      },
-      {
-        type: 'input',
-        name: 'tags',
-        message: 'Tags (comma-separated):',
-        default: 'ai, automation, productivity',
-      },
-    ]);
-
-    this.submissionData = answers;
-    return answers;
-  }
-
-  /**
-   * Prompt for inspection options
-   */
-  async promptInspectionOptions() {
-    const answers = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'csvPath',
-        message: 'CSV file path:',
-        default: './directories.csv',
-      },
-      {
-        type: 'confirm',
-        name: 'limitSites',
-        message: 'Limit number of sites to inspect?',
-        default: true,
-      },
-      {
-        type: 'number',
-        name: 'limit',
-        message: 'How many sites to inspect?',
-        default: 5,
-        when: (answers) => answers.limitSites,
-        validate: (input) => (input > 0 ? true : 'Please enter a positive number'),
-      },
-      {
-        type: 'confirm',
-        name: 'headless',
-        message: 'Run browser in headless mode?',
-        default: false,
-      },
-    ]);
-
-    return answers;
-  }
-
-  /**
-   * Prompt for submission options
-   */
-  async promptSubmissionOptions() {
-    const answers = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'csvPath',
-        message: 'CSV file path:',
-        default: './directories.csv',
-      },
-      {
-        type: 'confirm',
-        name: 'limitSites',
-        message: 'Limit number of submissions?',
-        default: false,
-      },
-      {
-        type: 'number',
-        name: 'limit',
-        message: 'How many sites to submit to?',
-        default: 10,
-        when: (answers) => answers.limitSites,
-        validate: (input) => (input > 0 ? true : 'Please enter a positive number'),
-      },
-      {
-        type: 'number',
-        name: 'delay',
-        message: 'Delay between submissions (ms):',
-        default: 5000,
-        validate: (input) => (input >= 0 ? true : 'Please enter a non-negative number'),
-      },
-      {
-        type: 'confirm',
-        name: 'headless',
-        message: 'Run browser in headless mode?',
-        default: false,
-      },
-    ]);
-
-    return answers;
-  }
-
-  /**
-   * Run site inspection
-   */
-  async runInspection() {
-    console.log(chalk.cyan('\n🔍 Starting Site Inspection...\n'));
-
-    const options = await this.promptInspectionOptions();
-    const spinner = ora('Loading directories...').start();
-
-    try {
-      // Parse CSV
-      const directories = await parseDirectoriesCSV(options.csvPath);
-      const unsubmitted = getUnsubmittedDirectories(directories);
-
-      spinner.succeed(`Found ${unsubmitted.length} unsubmitted directories`);
-
-      // Apply limit
-      let toInspect = unsubmitted;
-      if (options.limitSites && options.limit) {
-        toInspect = unsubmitted.slice(0, options.limit);
-        console.log(chalk.yellow(`\n⚠️  Limited to ${options.limit} sites\n`));
-      }
-
-      if (toInspect.length === 0) {
-        console.log(chalk.green('\n✅ No directories to inspect!\n'));
-        return;
-      }
-
-      // Initialize inspector
-      const inspector = new SiteInspector({
-        headless: options.headless,
-        timeout: 30000,
-      });
-
-      spinner.start('Initializing browser...');
-      await inspector.initialize();
-      spinner.succeed('Browser initialized');
-
-      // Create screenshots directory
-      await mkdir('screenshots', { recursive: true });
-
-      // Inspect sites
-      console.log(chalk.cyan(`\n🌐 Inspecting ${toInspect.length} sites...\n`));
-
-      const results = await inspector.inspectSites(toInspect);
-
-      // Save results
-      spinner.start('Saving results...');
-      await inspector.saveResults(results);
-      spinner.succeed('Results saved');
-
-      // Display summary
-      const successful = results.filter((r) => !r.error).length;
-      const failed = results.filter((r) => r.error).length;
-      const withForms = results.filter((r) => r.forms && r.forms.length > 0).length;
-      const withCaptcha = results.filter((r) => r.hasRecaptcha || r.hasHcaptcha).length;
-
-      console.log(chalk.cyan('\n📊 Inspection Summary:\n'));
-      console.log(chalk.green(`  ✅ Successfully inspected: ${successful}`));
-      console.log(chalk.red(`  ❌ Failed: ${failed}`));
-      console.log(chalk.blue(`  📝 Sites with forms: ${withForms}`));
-      console.log(chalk.yellow(`  🔒 Sites with CAPTCHA: ${withCaptcha}`));
-
-      if (withCaptcha > 0) {
-        console.log(chalk.yellow('\n⚠️  Sites with CAPTCHA will require manual submission'));
-      }
-
-      console.log(chalk.green('\n✨ Inspection complete!\n'));
-      console.log(chalk.gray('Generated files:'));
-      console.log(chalk.gray('  - site-configs.json'));
-      console.log(chalk.gray('  - site-inspection-results.json\n'));
-
-      await inspector.close();
-    } catch (error) {
-      spinner.fail(`Inspection failed: ${error.message}`);
-      console.error(chalk.red(`\n❌ Error: ${error.message}\n`));
-    }
-  }
-
-  /**
-   * Run submissions
-   */
-  async runSubmissions() {
-    console.log(chalk.cyan('\n🚀 Starting Submissions...\n'));
-
-    // Check if site-configs.json exists
-    try {
-      await import('fs/promises').then(fs => fs.access('./site-configs.json'));
-    } catch (error) {
-      console.log(chalk.red('\n❌ Error: site-configs.json not found!\n'));
-      console.log(chalk.yellow('You need to run one of these first:'));
-      console.log(chalk.yellow('  1. 🔬 Analyze All Directories (generates configs automatically)'));
-      console.log(chalk.yellow('  2. 🔍 Inspect Sites (generates configs for selected sites)\n'));
-      
-      const { runAnalyze } = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'runAnalyze',
-          message: 'Would you like to run Analyze now?',
-          default: true,
-        },
-      ]);
-
-      if (runAnalyze) {
-        await this.runAnalysis();
-        return;
-      } else {
-        return;
-      }
-    }
-
-    // Get submission data
-    await this.promptSubmissionData();
-
-    // Get submission options
-    const options = await this.promptSubmissionOptions();
-    const spinner = ora('Loading directories...').start();
-
-    try {
-      // Parse CSV
-      const directories = await parseDirectoriesCSV(options.csvPath);
-      const unsubmitted = getUnsubmittedDirectories(directories);
-
-      spinner.succeed(`Found ${unsubmitted.length} unsubmitted directories`);
-
-      // Apply limit
-      let toSubmit = unsubmitted;
-      if (options.limitSites && options.limit) {
-        toSubmit = unsubmitted.slice(0, options.limit);
-        console.log(chalk.yellow(`\n⚠️  Limited to ${options.limit} sites\n`));
-      }
-
-      if (toSubmit.length === 0) {
-        console.log(chalk.green('\n✅ No directories to submit to!\n'));
-        return;
-      }
-
-      // Confirm submission
-      const { confirm } = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'confirm',
-          message: `Submit to ${toSubmit.length} directories?`,
-          default: true,
-        },
-      ]);
-
-      if (!confirm) {
-        console.log(chalk.yellow('\n⚠️  Submission cancelled\n'));
-        return;
-      }
-
-      // Initialize bot
-      const bot = new SmartSubmissionBot({
-        headless: options.headless,
-        timeout: 30000,
-        delayBetweenSubmissions: options.delay,
-        screenshotOnError: true,
-      });
-
-      spinner.start('Initializing browser...');
-      await bot.initialize();
-      await bot.loadSiteConfigs('./site-configs.json');
-      spinner.succeed('Browser initialized');
-
-      // Create screenshots directory
-      await mkdir('screenshots', { recursive: true });
-
-      // Process submissions
-      console.log(chalk.cyan(`\n📝 Submitting to ${toSubmit.length} directories...\n`));
-
-      const results = await bot.processDirectoriesWithConfigs(toSubmit, this.submissionData);
-
-      // Save results
-      spinner.start('Saving results...');
-      await bot.saveResults(results);
-      spinner.succeed('Results saved');
-
-      // Display summary
-      const successful = results.filter((r) => r.result.success).length;
-      const failed = results.filter((r) => !r.result.success).length;
-      const manual = results.filter((r) => r.result.requiresManual).length;
-
-      console.log(chalk.cyan('\n📊 Submission Summary:\n'));
-      console.log(chalk.green(`  ✅ Successful: ${successful}`));
-      console.log(chalk.red(`  ❌ Failed: ${failed}`));
-      console.log(chalk.yellow(`  ⚠️  Requires manual: ${manual}`));
-
-      console.log(chalk.green('\n✨ Submissions complete!\n'));
-      console.log(chalk.gray('Results saved to: submission-results.json\n'));
-
-      await bot.close();
-    } catch (error) {
-      spinner.fail(`Submission failed: ${error.message}`);
-      console.error(chalk.red(`\n❌ Error: ${error.message}\n`));
-    }
-  }
-
-  /**
    * Run comprehensive analysis
    */
   async runAnalysis() {
@@ -446,9 +103,19 @@ class DirectoriesCLI {
     try {
       // Parse CSV
       const directories = await parseDirectoriesCSV(this.csvPath);
+      const submitted = directories.filter((d) => d.status === 'submitted');
       const unsubmitted = getUnsubmittedDirectories(directories);
 
-      spinner.succeed(`Found ${unsubmitted.length} unsubmitted directories`);
+      spinner.succeed(`Found ${directories.length} total directories`);
+      
+      if (submitted.length > 0) {
+        console.log(chalk.gray(`\n📋 Skipping ${submitted.length} already submitted directories:`));
+        submitted.forEach((d) => {
+          console.log(chalk.gray(`   • ${d.name}`));
+        });
+      }
+      
+      console.log(chalk.green(`\n✅ Processing ${unsubmitted.length} unsubmitted directories\n`));
 
       if (unsubmitted.length === 0) {
         console.log(chalk.green('\n✅ No directories to analyze!\n'));
@@ -470,6 +137,12 @@ class DirectoriesCLI {
       const fieldAnalysis = await analyzer.saveResults(analysisResults);
       
       this.fieldRequirements = fieldAnalysis.fieldRequirements;
+
+      // Generate site-configs.json from the analysis
+      spinner.start('Generating site configurations...');
+      const siteConfigs = this.generateSiteConfigsFromAnalysis(analysisResults);
+      await this.saveSiteConfigs(siteConfigs);
+      spinner.succeed('Site configurations generated');
 
       await analyzer.close();
 
@@ -593,6 +266,95 @@ class DirectoriesCLI {
   }
 
   /**
+   * Generate site configs from field analysis
+   */
+  generateSiteConfigsFromAnalysis(analysisResults) {
+    const configs = {};
+
+    analysisResults.forEach((result) => {
+      if (result.error) {
+        configs[result.name] = {
+          url: result.url,
+          error: result.error,
+          manualSubmissionRequired: true,
+        };
+        return;
+      }
+
+      const config = {
+        url: result.url,
+        hasForm: result.fields && result.fields.length > 0,
+        requiresCaptcha: false,
+        submissionMethod: 'form',
+      };
+
+      if (result.fields && result.fields.length > 0) {
+        const fieldMapping = {};
+        
+        result.fields.forEach((field) => {
+          const fieldKey = this.mapFieldToKey(field);
+          if (fieldKey) {
+            fieldMapping[fieldKey] = {
+              selector: this.getFieldSelector(field),
+              type: field.type,
+              name: field.name,
+              id: field.id,
+            };
+          }
+        });
+
+        config.form = {
+          fields: fieldMapping,
+          submitButton: {
+            selector: 'button[type="submit"], input[type="submit"]',
+          },
+        };
+      }
+
+      configs[result.name] = config;
+    });
+
+    return configs;
+  }
+
+  /**
+   * Map field to standard key
+   */
+  mapFieldToKey(field) {
+    const name = (field.name || field.id || field.label).toLowerCase();
+    const type = field.type.toLowerCase();
+
+    if (name.includes('name') && !name.includes('first') && !name.includes('last')) return 'name';
+    if (name.includes('first') && name.includes('name')) return 'firstName';
+    if (name.includes('last') && name.includes('name')) return 'lastName';
+    if (name.includes('email') || type === 'email') return 'email';
+    if (name.includes('url') || name.includes('website') || type === 'url') return 'url';
+    if (name.includes('description') || type === 'textarea') return 'description';
+    if (name.includes('category')) return 'category';
+    if (name.includes('tag')) return 'tags';
+    if (name.includes('title')) return 'title';
+    
+    return null;
+  }
+
+  /**
+   * Get CSS selector for a field
+   */
+  getFieldSelector(field) {
+    if (field.id) return `#${field.id}`;
+    if (field.name) return `[name="${field.name}"]`;
+    return `input[type="${field.type}"]`;
+  }
+
+  /**
+   * Save site configs to file
+   */
+  async saveSiteConfigs(configs) {
+    await writeFile('site-configs.json', JSON.stringify(configs, null, 2));
+    console.log(chalk.gray('   💾 Saved site-configs.json'));
+  }
+
+  /**
    * Prompt for all fields with smart defaults
    */
   async promptForAllFields(generatedValues, fieldRequirements) {
@@ -642,20 +404,7 @@ class DirectoriesCLI {
       });
     });
 
-    // Add optional fields that were found in analysis
-    const optionalFields = fieldRequirements
-      .filter((f) => !coreFields.includes(f.fieldKey) && f.count > 5)
-      .slice(0, 5);
-
-    optionalFields.forEach((field) => {
-      const defaultValue = generatedValues[field.fieldKey] || '';
-      prompts.push({
-        type: 'input',
-        name: field.fieldKey,
-        message: `${field.fieldKey} (optional, found in ${field.count} sites):`,
-        default: defaultValue,
-      });
-    });
+    // Optional fields are skipped - core fields cover 95% of directories
 
     return await inquirer.prompt(prompts);
   }
@@ -761,12 +510,6 @@ class DirectoriesCLI {
       switch (action) {
         case 'analyze':
           await this.runAnalysis();
-          break;
-        case 'inspect':
-          await this.runInspection();
-          break;
-        case 'submit':
-          await this.runSubmissions();
           break;
         case 'stats':
           await this.showStatistics();

@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
-import { parseDirectoriesCSV, getUnsubmittedDirectories } from './utils/csv-parser.js';
+import {
+  parseDirectoriesCSV,
+  getUnsubmittedDirectories,
+} from './utils/csv-parser.js';
 import { SmartSubmissionBot } from './smart-submission-bot.js';
 import { mkdir } from 'fs/promises';
 
@@ -17,7 +20,9 @@ async function main() {
     config = configModule.default;
   } catch (error) {
     console.error('❌ Error: config.js not found!');
-    console.error('Please copy config.example.js to config.js and fill in your details.');
+    console.error(
+      'Please copy config.example.js to config.js and fill in your details.'
+    );
     process.exit(1);
   }
 
@@ -44,12 +49,16 @@ async function main() {
 
   if (config.filter?.onlyUnsubmitted) {
     directoriesToProcess = getUnsubmittedDirectories(directories);
-    console.log(`🔍 Filtered to ${directoriesToProcess.length} unsubmitted directories`);
+    console.log(
+      `🔍 Filtered to ${directoriesToProcess.length} unsubmitted directories`
+    );
   }
 
   if (config.filter?.limit && config.filter.limit > 0) {
     directoriesToProcess = directoriesToProcess.slice(0, config.filter.limit);
-    console.log(`⚠️  Limited to first ${config.filter.limit} directories for testing\n`);
+    console.log(
+      `⚠️  Limited to first ${config.filter.limit} directories for testing\n`
+    );
   }
 
   if (directoriesToProcess.length === 0) {
@@ -67,8 +76,10 @@ async function main() {
     await bot.loadSiteConfigs('./site-configs.json');
 
     // Process directories with smart submission
-    console.log(`\n🚀 Processing ${directoriesToProcess.length} directories...\n`);
-    console.log('=' .repeat(60));
+    console.log(
+      `\n🚀 Processing ${directoriesToProcess.length} directories...\n`
+    );
+    console.log('='.repeat(60));
 
     const results = await bot.processDirectoriesWithConfigs(
       directoriesToProcess,

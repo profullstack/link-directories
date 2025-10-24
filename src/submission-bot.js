@@ -134,19 +134,31 @@ export class SubmissionBot {
     try {
       // Fill text inputs
       if (formData.name) {
-        await this.fillInput('input[name*="name"], input[id*="name"]', formData.name);
+        await this.fillInput(
+          'input[name*="name"], input[id*="name"]',
+          formData.name
+        );
       }
 
       if (formData.email) {
-        await this.fillInput('input[type="email"], input[name*="email"]', formData.email);
+        await this.fillInput(
+          'input[type="email"], input[name*="email"]',
+          formData.email
+        );
       }
 
       if (formData.url) {
-        await this.fillInput('input[type="url"], input[name*="url"], input[name*="website"]', formData.url);
+        await this.fillInput(
+          'input[type="url"], input[name*="url"], input[name*="website"]',
+          formData.url
+        );
       }
 
       if (formData.description) {
-        await this.fillInput('textarea, input[name*="description"]', formData.description);
+        await this.fillInput(
+          'textarea, input[name*="description"]',
+          formData.description
+        );
       }
 
       if (formData.category) {
@@ -213,9 +225,11 @@ export class SubmissionBot {
 
       if (submitButton) {
         await submitButton.click();
-        await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 }).catch(() => {
-          console.log('No navigation after submit (might be AJAX)');
-        });
+        await this.page
+          .waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 })
+          .catch(() => {
+            console.log('No navigation after submit (might be AJAX)');
+          });
 
         return {
           success: true,
@@ -261,11 +275,16 @@ export class SubmissionBot {
     for (const directory of directories) {
       try {
         // Visit the directory
-        const visitResult = await this.visitDirectory(directory.url, directory.name);
-        
+        const visitResult = await this.visitDirectory(
+          directory.url,
+          directory.name
+        );
+
         // Add delay between submissions
         if (this.config.delayBetweenSubmissions > 0) {
-          console.log(`Waiting ${this.config.delayBetweenSubmissions}ms before next submission...`);
+          console.log(
+            `Waiting ${this.config.delayBetweenSubmissions}ms before next submission...`
+          );
           await this.page.waitForTimeout(this.config.delayBetweenSubmissions);
         }
 

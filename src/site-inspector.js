@@ -104,7 +104,8 @@ export class SiteInspector {
 
           if (submitBtn) {
             formData.submitButton = {
-              text: submitBtn.textContent?.trim() || submitBtn.value || 'Submit',
+              text:
+                submitBtn.textContent?.trim() || submitBtn.value || 'Submit',
               selector: submitBtn.id
                 ? `#${submitBtn.id}`
                 : submitBtn.className
@@ -119,7 +120,9 @@ export class SiteInspector {
         // Also look for common submission patterns outside forms
         const submissionLinks = [];
         document
-          .querySelectorAll('a[href*="submit"], a[href*="add"], a[href*="register"]')
+          .querySelectorAll(
+            'a[href*="submit"], a[href*="add"], a[href*="register"]'
+          )
           .forEach((link) => {
             submissionLinks.push({
               text: link.textContent.trim(),
@@ -131,7 +134,9 @@ export class SiteInspector {
           forms,
           submissionLinks,
           title: document.title,
-          hasRecaptcha: !!document.querySelector('.g-recaptcha, [data-sitekey]'),
+          hasRecaptcha: !!document.querySelector(
+            '.g-recaptcha, [data-sitekey]'
+          ),
           hasHcaptcha: !!document.querySelector('.h-captcha'),
         };
       });
@@ -141,7 +146,9 @@ export class SiteInspector {
 
       console.log(`   ✅ Found ${siteConfig.forms.length} form(s)`);
       if (siteConfig.submissionLinks.length > 0) {
-        console.log(`   🔗 Found ${siteConfig.submissionLinks.length} submission link(s)`);
+        console.log(
+          `   🔗 Found ${siteConfig.submissionLinks.length} submission link(s)`
+        );
       }
       if (siteConfig.hasRecaptcha || siteConfig.hasHcaptcha) {
         console.log(`   ⚠️  CAPTCHA detected - manual intervention required`);
@@ -195,22 +202,34 @@ export class SiteInspector {
           lowerLabel.includes('first') ||
           lowerPlaceholder.includes('first')
         ) {
-          mapping.firstName = { selector: this.getFieldSelector(field), type: 'text' };
+          mapping.firstName = {
+            selector: this.getFieldSelector(field),
+            type: 'text',
+          };
         } else if (
           lowerKey.includes('last') ||
           lowerLabel.includes('last') ||
           lowerPlaceholder.includes('last')
         ) {
-          mapping.lastName = { selector: this.getFieldSelector(field), type: 'text' };
+          mapping.lastName = {
+            selector: this.getFieldSelector(field),
+            type: 'text',
+          };
         } else {
-          mapping.name = { selector: this.getFieldSelector(field), type: 'text' };
+          mapping.name = {
+            selector: this.getFieldSelector(field),
+            type: 'text',
+          };
         }
       } else if (
         lowerKey.includes('email') ||
         lowerLabel.includes('email') ||
         field.type === 'email'
       ) {
-        mapping.email = { selector: this.getFieldSelector(field), type: 'email' };
+        mapping.email = {
+          selector: this.getFieldSelector(field),
+          type: 'email',
+        };
       } else if (
         lowerKey.includes('url') ||
         lowerKey.includes('website') ||
@@ -225,7 +244,10 @@ export class SiteInspector {
         lowerLabel.includes('description') ||
         field.type === 'textarea'
       ) {
-        mapping.description = { selector: this.getFieldSelector(field), type: 'textarea' };
+        mapping.description = {
+          selector: this.getFieldSelector(field),
+          type: 'textarea',
+        };
       } else if (
         lowerKey.includes('category') ||
         lowerLabel.includes('category') ||
@@ -239,9 +261,18 @@ export class SiteInspector {
       } else if (lowerKey.includes('tag') || lowerLabel.includes('tag')) {
         mapping.tags = { selector: this.getFieldSelector(field), type: 'text' };
       } else if (lowerKey.includes('title') || lowerLabel.includes('title')) {
-        mapping.title = { selector: this.getFieldSelector(field), type: 'text' };
-      } else if (lowerKey.includes('company') || lowerLabel.includes('company')) {
-        mapping.company = { selector: this.getFieldSelector(field), type: 'text' };
+        mapping.title = {
+          selector: this.getFieldSelector(field),
+          type: 'text',
+        };
+      } else if (
+        lowerKey.includes('company') ||
+        lowerLabel.includes('company')
+      ) {
+        mapping.company = {
+          selector: this.getFieldSelector(field),
+          type: 'text',
+        };
       }
     });
 
@@ -328,7 +359,10 @@ export class SiteInspector {
   /**
    * Save inspection results and configurations
    */
-  async saveResults(inspectionResults, filename = 'site-inspection-results.json') {
+  async saveResults(
+    inspectionResults,
+    filename = 'site-inspection-results.json'
+  ) {
     await writeFile(filename, JSON.stringify(inspectionResults, null, 2));
     console.log(`\n💾 Inspection results saved to ${filename}`);
 
