@@ -1,23 +1,74 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
+import { createC0mpute } from './c0mpute.js';
 
 // Load environment variables
 dotenv.config();
 
 /**
- * AI Helper - Uses OpenAI to generate better descriptions, categories, and tags
+ * AI Helper - generates better descriptions, categories, and tags.
+ * c0mpute first (see ./c0mpute.js), OpenAI as the fallback when
+ * OPENAI_API_KEY is set.
  */
 export class AIHelper {
-  constructor() {
+  /**
+   * @param {object} [options]
+   * @param {string} [options.c0mputeApiKey] default C0MPUTE_API_KEY
+   * @param {object|false} [options.c0mpute] a router to use instead, or false to skip c0mpute
+   * @param {string} [options.openaiApiKey] default OPENAI_API_KEY
+   */
+  constructor(options = {}) {
     this.openai = null;
-    this.enabled = false;
+    this.c0mpute =
+      options.c0mpute === false
+        ? null
+        : options.c0mpute || createC0mpute({ apiKey: options.c0mputeApiKey });
 
-    if (process.env.OPENAI_API_KEY) {
+    const openaiApiKey = options.openaiApiKey ?? process.env.OPENAI_API_KEY;
+    if (openaiApiKey) {
       this.openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
+        apiKey: openaiApiKey,
       });
-      this.enabled = true;
     }
+
+    this.enabled = !!(this.c0mpute || this.openai);
+  }
+
+  /**
+   * One completion: c0mpute first, OpenAI when c0mpute fails and a key is set.
+   * Throws when every configured provider fails.
+   * @private
+   */
+  async complete({ system, user, maxTokens, temperature, feature }) {
+    if (this.c0mpute) {
+      try {
+        const r = await this.c0mpute.generateText({
+          system,
+          user,
+          // headroom: small local models spend a few tokens before answering
+          maxTokens: Math.max(maxTokens, 256),
+          temperature,
+          feature: `directories:${feature}`,
+        });
+        this.lastProvider = r.provider;
+        return r.text;
+      } catch (error) {
+        if (!this.openai) throw error;
+        console.warn(`⚠️  c0mpute failed, falling back to OpenAI: ${error.message}`);
+      }
+    }
+
+    const completion = await this.openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+      max_tokens: maxTokens,
+      temperature,
+    });
+    this.lastProvider = 'openai';
+    return completion.choices[0]?.message?.content;
   }
 
   /**
@@ -45,24 +96,16 @@ Keywords: ${websiteData.keywords || 'N/A'}
 
 Write a concise, engaging description that highlights the key value proposition. Keep it under 200 characters.`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are an expert copywriter specializing in concise, compelling product descriptions for directory listings.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        max_tokens: 100,
+      const text = await this.complete({
+        system:
+          'You are an expert copywriter specializing in concise, compelling product descriptions for directory listings.',
+        user: prompt,
+        maxTokens: 100,
         temperature: 0.7,
+        feature: 'description',
       });
 
-      return completion.choices[0]?.message?.content?.trim() || null;
+      return text?.trim() || null;
     } catch (error) {
       console.warn(`⚠️  AI description generation failed: ${error.message}`);
       return null;
@@ -89,24 +132,16 @@ Choose ONE category from: AI Tools, SaaS, Productivity, Marketing, Analytics, De
 
 Respond with ONLY the category name, nothing else.`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are a categorization expert. Respond with only the category name.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        max_tokens: 20,
+      const text = await this.complete({
+        system:
+          'You are a categorization expert. Respond with only the category name.',
+        user: prompt,
+        maxTokens: 20,
         temperature: 0.3,
+        feature: 'category',
       });
 
-      return completion.choices[0]?.message?.content?.trim() || null;
+      return text?.trim() || null;
     } catch (error) {
       console.warn(`⚠️  AI category generation failed: ${error.message}`);
       return null;
@@ -137,24 +172,16 @@ Generate tags that are:
 
 Respond with ONLY the comma-separated tags, nothing else.`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are a tagging expert. Respond with only comma-separated tags.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        max_tokens: 50,
+      const text = await this.complete({
+        system:
+          'You are a tagging expert. Respond with only comma-separated tags.',
+        user: prompt,
+        maxTokens: 50,
         temperature: 0.5,
+        feature: 'tags',
       });
 
-      return completion.choices[0]?.message?.content?.trim() || null;
+      return text?.trim() || null;
     } catch (error) {
       console.warn(`⚠️  AI tags generation failed: ${error.message}`);
       return null;
@@ -191,24 +218,16 @@ DESCRIPTION: [your description here]
 CATEGORY: [category name]
 TAGS: [tag1, tag2, tag3, ...]`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are an expert at creating optimized directory submission content. Follow the format exactly.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        max_tokens: 200,
+      const text = await this.complete({
+        system:
+          'You are an expert at creating optimized directory submission content. Follow the format exactly.',
+        user: prompt,
+        maxTokens: 200,
         temperature: 0.7,
+        feature: 'all',
       });
 
-      const response = completion.choices[0]?.message?.content?.trim();
+      const response = text?.trim();
 
       // Parse the response
       const descMatch = response?.match(
