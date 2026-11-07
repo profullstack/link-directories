@@ -1,6 +1,6 @@
 {
   "name": "directories",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Automated directory submission CLI using Puppeteer",
   "type": "module",
   "main": "src/cli.js",
@@ -24,6 +24,7 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.20.0",
+    "@profullstack/ai-providers": "0.1.2",
     "chalk": "^5.3.0",
     "dotenv": "^16.3.1",
     "inquirer": "^9.3.8",
